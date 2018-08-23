@@ -4,28 +4,31 @@ var bcrypt = require('bcrypt');
 var myPlaintextPassword = 's0/\/\P4$$w0rD';
 // var secret = "Harry";
 const saltRounds = 8;
-
+let users;
+let count;
+let chatRooms;
+let messagesArray = [];
 exports.register = function (req, res) {
     try {
         myPlaintextPassword = req.body.password ;
         console.log("inside exports.register");
         bcrypt.hash(myPlaintextPassword, saltRounds, function(err, hash) {
             console.log("inside bcrypt.hash");
-        if(err)
-        {
-            console.log("e>>>>>",err);
-        }
-        else
-        {
-            myPlaintextPassword = hash;
-            console.log("OK", myPlaintextPassword);
-            let userData = {
-            "username": req.body.username,
-            "email": req.body.email,
-            "password": myPlaintextPassword
+            if(err)
+            {
+                console.log("e>>>>>",err);
             }
-            delete req.body.password
-            console.log("req.body.password>>>", req.body.password);
+            else
+            {
+                myPlaintextPassword = hash;
+                console.log("OK", myPlaintextPassword);
+                let userData = {
+                    "username": req.body.username,
+                    "email": req.body.email,
+                    "password": myPlaintextPassword
+                }
+                delete req.body.password
+                console.log("req.body.password>>>", req.body.password);
                 User.create(userData, (err,data) =>
                 {
                     console.log("inside user.save function");
@@ -41,10 +44,10 @@ exports.register = function (req, res) {
 
                     }
                 })
-         
-        } 
+
+            } 
         });
-          
+
 
     } catch(e) {
         console.log("e>>>>>>",e);
@@ -56,6 +59,9 @@ exports.auth = function (req,res)
     try
     {
         var email = req.body.email;
+        let isPresent = false;
+        let loggedInUser;
+
 
         if(!req.body.email)
         {
@@ -80,51 +86,95 @@ exports.auth = function (req,res)
                 }
                 else {  
 
-                        if(!user){
+                    if(!user){
                         console.log("Invalid user");
                         let error = { "error": "User does not exist with email" };
                         res.status(500).json(error);    
-                        } 
-                        else {
-                        console.log("user>>>>",user);
+                    } 
+                    else {
                         let storedPassword = user.password;
                         console.log("storedPassword" , storedPassword);
                         let currentPassword = req.body.password;
                         console.log("currentPassword" , currentPassword);
                         console.log("storedPassword" , storedPassword);
-                            bcrypt.compare(currentPassword, storedPassword, (err,match) =>
-                            {
-                                if(match){
+                        bcrypt.compare(currentPassword, storedPassword, (err,match) =>
+                        {
+                            if(match){
                                 console.log("password matched");
                                 let payload = user; 
                                 let secret = "ChatSecret";                                      
                                 let expiresIn = { expiresIn: 86400 };
                                 let token = jwt.sign(payload, secret, expiresIn);
                                 delete user.password
-                                io.emit('LOGGED_IN_USER',user);
-                                res.status(200).json({"accessToken": token, "currentUser": user})
-                                }
-                                
-                                else{
-                                console.log("password invalid");
-                                }
-                            })
+                                isPresent = true;
+                                loggedInUser = {
+                                    username: user.username,
+                                    email: user.email
+                                } 
 
-                        }
+                                io.sockets.on('connection', function(socket){
+                                    console.log('a user connected',socket.id);
+                                    socket.emit('LOGGED_IN_USER',user);
+                                    socket.on('join', (data) => {
+                                        socket.join(data.room);
+                                        chatRooms.find({}).toArray((err, rooms) => {
+                                            if(err){
+                                                console.log(err);
+                                                return false;
+                                            }
+                                            count = 0;
+                                            rooms.forEach((room) => {
+                                                if(room.name == data.room){
+                                                    count++;
+                                                }
+                                            });
+                                            if(count == 0) {
+                                                chatRooms.insert({ name: data.room, messages: [] }); 
+                                            }
+                                        });
+                                    });
+                                    socket.on('message', (data) => {
+                                        console.log('message');
+                                        io.in(data.room).emit('new message', {user: data.user, message: data.message});
+                                        chatRooms.update({name: data.room}, { $push: { messages: { user: data.user, message: data.message } } }, (err, res) => {
+                                            if(err) {
+                                                console.log(err);
+                                                return false;
+                                            }
+                                            console.log("Document updated", res);
+                                        });
+                                    });
+                                    socket.on('typing', (data) => {
+                                        socket.broadcast.in(data.room).emit('typing', {data: data, isTyping: true});
+                                    });
+                                });
+
+                                // io.emit('LOGGED_IN_USER',user);
+
+
+                                res.status(200).json({"accessToken": token, "currentUser": loggedInUser, isPresent: isPresent})
+                            }
+
+                            else{
+                                console.log("password invalid");
+                            }
+                        })
+
                     }
-               
-                    
+                }
+
+
                 
             })
 
-        }
-    }
-    catch(e)
-    {
-        console.log("exception e>>" , e);
-        res.status(500).json(e)
+}
+}
+catch(e)
+{
+    console.log("exception e>>" , e);
+    res.status(500).json(e)
 
-    }
+}
 }
 
 exports.getAllUsers = function (req, res)  {

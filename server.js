@@ -2,6 +2,7 @@ var express = require('express');
 var app = express();
 var http = require('http').Server(app);
 io = require('socket.io')(http);
+// mongodb = require('mongodb');
 var mongoose = require('mongoose');
 var path = require('path');
 var bodyParser = require('body-parser');
@@ -9,6 +10,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 var router = express.Router();
 var userController = require('./controllers/users');
+var chatController = require('./controllers/chat');
+
+// MongoClient = mongodb.MongoClient;
+
 
 
 var port = process.env.PORT || 9090;
@@ -24,6 +29,13 @@ mongoose.connect("mongodb://localhost:27017/chat", function(err)
 		console.log("db connected");
 	}
 });
+
+//
+
+
+
+
+
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -39,15 +51,28 @@ router.use((req, res, next) => {
 // console.log("server.js hitting");
 
 // })
-io.on('connection', function(socket){
-  console.log('a user connected',socket.id);
+// io.sockets.on('connection', function(socket){
+//   console.log('a user connected',socket.id);
   
-});
+// });
 
 
 router.post('/user/register', userController.register);
 router.post('/user/auth', userController.auth);
 router.get('/user/getAllUsers', userController.getAllUsers);
+router.get('/chat/setup', chatController.getChatRooms);
+// router.post('chat/setup', chatController.getChatHistory);
+
+// router.get('/chatroom/:room', (req, res, next) => {
+//     let room = req.params.room;
+//     chatRooms.find({name: room}).toArray((err, chatroom) => {
+//         if(err) {
+//             console.log(err);
+//             return false;
+//         }
+//         res.json(chatroom[0].messages);
+//     });
+// });
 
 
 
