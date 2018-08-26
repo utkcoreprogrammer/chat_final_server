@@ -89,6 +89,8 @@ var users;
 var count;
 var chatRooms;
 var messages = [];
+var messageArray = [];
+var chatHistory = [];
 
 const app = express();
 
@@ -134,6 +136,8 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
                     if(room.name == data.room){
    	                    console.log("room >>>", room);
                         count++;
+                        messageArray = room.messages
+                        socket.emit('getMessages', messageArray);
                     }
                 });
                 if(count == 0) {
@@ -154,6 +158,8 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
         });
         socket.on('typing', (data) => {
             socket.broadcast.in(data.room).emit('typing', {data: data, isTyping: true});
+            // addEventListener("keypress")
+
         });
     });
 
@@ -233,6 +239,7 @@ app.get('/user/getAllUsers', (req, res, next) => {
         if(err) {
             res.send(err);
         }
+        else
         res.json(users);
     });
 });
@@ -240,12 +247,14 @@ app.get('/user/getAllUsers', (req, res, next) => {
 app.get('/chatroom/:room', (req, res, next) => {
     let room = req.params.room;
     console.log("inside chatroom/:room>>>>>>");
-    chatRooms.find({name: room}, (err, chatroom) => {
+    chatRooms.find({name: room}).toArray((err, chatroom) => {
         if(err) {
             console.log(err);
             return false;
         }
-        console.log("getting chatroom");
-        res.json(chatroom.messages);
+        else{
+        console.log("type of chatroom  ", typeof(chatroom));
+        res.json(chatroom.message);
+        }
     });
 });
