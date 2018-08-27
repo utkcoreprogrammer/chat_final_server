@@ -119,7 +119,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
     const server = app.listen(port, () => {
         console.log("Server started on port " + port + "...");
     });
-    const io = socket.listen(server);
+    io = socket.listen(server);
 
     io.sockets.on('connection', (socket) => {
         socket.on('join', (data) => {
@@ -174,7 +174,8 @@ app.post('/user/register', (req, res, next) => {
     let user = {
         username: req.body.username,
         email: req.body.email,
-        password: req.body.password
+        password: req.body.password,
+        isOnline : false
     };
     let count = 0;    
     users.find({}, (err, Users) => {
@@ -214,8 +215,9 @@ app.post('/user/auth', (req, res) => {
         if(err){
         	console.log("err in user auth", err);
         	res.send(err);
-        }	users.forEach((user) => {
-        	    console.log('inside users.forEach');
+        }else{
+            users.forEach((user) => {
+                console.log('inside users.forEach');
 
             if((user.email == req.body.email)) {
                 if(user.password == req.body.password) {
@@ -223,14 +225,18 @@ app.post('/user/auth', (req, res) => {
                     correctPassword = true;
                     loggedInUser = {
                         username: user.username,
-                        email: user.email
-                    }    
+                        email: user.email,
+                        isOnline : true
+
+                    }   
                 } else {
                     isPresent = true;
                 }
             }
-        });
+        }); 
+            io.emit("logged_in_user",loggedInUser);   
             res.json({ isPresent: isPresent, correctPassword: correctPassword, user: loggedInUser });
+        }
     });
 });
 
