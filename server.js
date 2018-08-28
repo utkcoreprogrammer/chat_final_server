@@ -1,85 +1,3 @@
-// var express = require('express');
-// var app = express();
-// var http = require('http').Server(app);
-// io = require('socket.io')(http);
-// var mongoose = require('mongoose');
-// var path = require('path');
-// var bodyParser = require('body-parser');
-// app.use(bodyParser.json());
-// app.use(bodyParser.urlencoded({ extended: true }));
-// var router = express.Router();
-// var userController = require('./controllers/users');
-// var chatController = require('./controllers/chat');
-
-
-
-
-// var port = process.env.PORT || 9090;
-
-// mongoose.connect("mongodb://localhost:27017/chat", function(err)
-// {
-// 	if(err)
-// 	{
-// 		console.log("not connected" + err);
-// 	}
-// 	else
-// 	{
-// 		console.log("db connected");
-// 	}
-// });
-
-// //
-
-
-
-
-
-// app.use(function(req, res, next) {
-//     res.header("Access-Control-Allow-Origin", "*");
-//     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-//     next()
-// })
-// app.use('/Chat', router);
-// router.use((req, res, next) => {
-//     next()
-// })
-
-// // router.get('/*', function (req, res) {
-// // res.json({ message: 'Welcome to Forge', now: + new Date });
-// // console.log("server.js hitting");
-
-// // })
-
-
-
-// router.post('/user/register', userController.register);
-// router.post('/user/auth', userController.auth);
-// router.get('/user/getAllUsers', userController.getAllUsers);
-// // router.get('/chat/setup', chatController.getChatRooms);
-// // router.post('chat/setup', chatController.getChatHistory);
-
-// // router.get('/chatroom/:room', (req, res, next) => {
-// //     let room = req.params.room;
-// //     chatRooms.find({name: room}).toArray((err, chatroom) => {
-// //         if(err) {
-// //             console.log(err);
-// //             return false;
-// //         }
-// //         res.json(chatroom[0].messages);
-// //     });
-// // });
-
-
-
-// http.listen(port, function(){
-//   console.log('listening on port ' + port);
-// });
-
-// io.sockets.on('connection', function(socket){
-//   console.log('a user connected',socket.id);
-  
-// });
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongodb = require('mongodb');
@@ -95,6 +13,7 @@ var chatHistory = [];
 const app = express();
 
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const MongoClient = mongodb.MongoClient;
 
@@ -117,7 +36,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
     users = db.collection("users");
     chatRooms = db.collection("chatRooms");
     const server = app.listen(port, () => {
-        console.log("Server started on port " + port + "...");
+    console.log("Server started on port " + port + "...");
     });
     io = socket.listen(server);
 
@@ -125,7 +44,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
         socket.on('join', (data) => {
             socket.join(data.room);
             console.log("data>>>>", data);
-             chatRooms.find({}).toArray((err, rooms) => {
+            chatRooms.find({}).toArray((err, rooms) => {
                 if(err){
                     console.log("err>>>>>", err);
                     return false;
@@ -134,7 +53,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
                 console.log("rooms>>>>" ,rooms);
                 rooms.forEach((room) => {
                     if(room.name == data.room){
-   	                    console.log("room >>>", room);
+                        console.log("room >>>", room);
                         count++;
                         messageArray = room.messages
                         socket.emit('getMessages', messageArray);
@@ -170,7 +89,8 @@ app.get('/', (req, res, next) => {
 });
 
 app.post('/user/register', (req, res, next) => {
-	console.log("inside user/register>>>");
+	console.log("inside user/register>>>", req.body);
+
     let user = {
         username: req.body.username,
         email: req.body.email,
@@ -183,10 +103,10 @@ app.post('/user/register', (req, res, next) => {
             console.log(err);
             return res.status(500).send(err);
         }
-        console.log("Users.find>>>>>>>", Users);
+        console.log("Users.find>>>>>>>");
         for(let i = 0; i < Users.length; i++){
             if(Users[i].username == user.username)
-            count++;
+                count++;
         }
         // Add user if not already signed up
         if(count == 0){
@@ -217,27 +137,58 @@ app.post('/user/auth', (req, res) => {
         	res.send(err);
         }else{
             users.forEach((user) => {
-                console.log('inside users.forEach');
 
-            if((user.email == req.body.email)) {
-                if(user.password == req.body.password) {
-                    isPresent = true;
-                    correctPassword = true;
-                    loggedInUser = {
-                        username: user.username,
-                        email: user.email,
-                        isOnline : true
+                if((user.email == req.body.email)) {
+                    if(user.password == req.body.password) {
+                        isPresent = true;
+                        user.isOnline = true;
+                        correctPassword = true;
+                        loggedInUser = {
+                            id: user._id,
+                            username: user.username,
+                            email: user.email,
+                            isOnline : user.isOnline
 
-                    }   
-                } else {
-                    isPresent = true;
+                        }   
+                    } else {
+                        isPresent = true;
+                    }
                 }
-            }
-        }); 
+            }); 
             io.emit("logged_in_user",loggedInUser);   
             res.json({ isPresent: isPresent, correctPassword: correctPassword, user: loggedInUser });
         }
     });
+});
+
+app.post('/user/logOut', (req, res, next) =>
+{ 
+  console.log("users.logout api hitting");
+  let email = req.body;
+  console.log("email from api@@@", email);
+
+  users.find({email : req.body},(err, user) =>
+    {
+        if(err){
+        console.log("err in user logOut", err);
+        }
+        else{
+        console.log("inside else of users.find", user);
+            
+            
+            //     user.isOnline = false;
+            //     logOutUser = {
+            //         id: user._id,
+            //         username: user.username,
+            //         email: user.email,
+            //         isOnline : user.isOnline
+
+            //     }
+            // io.emit("log_Out_User",user);   
+            // res.status(200).json(user);
+        }
+    })
+
 });
 
 app.get('/user/getAllUsers', (req, res, next) => {
@@ -246,7 +197,7 @@ app.get('/user/getAllUsers', (req, res, next) => {
             res.send(err);
         }
         else
-        res.json(users);
+            res.json(users);
     });
 });
 
@@ -259,8 +210,8 @@ app.get('/chatroom/:room', (req, res, next) => {
             return false;
         }
         else{
-        console.log("type of chatroom  ", typeof(chatroom));
-        res.json(chatroom.message);
+            console.log("type of chatroom  ", typeof(chatroom));
+            res.json(chatroom.message);
         }
     });
 });
