@@ -36,11 +36,12 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
     users = db.collection("users");
     chatRooms = db.collection("chatRooms");
     const server = app.listen(port, () => {
-    console.log("Server started on port " + port + "...");
+        console.log("Server started on port " + port + "...");
     });
     io = socket.listen(server);
 
     io.sockets.on('connection', (socket) => {
+        console.log("socket connected>>>>", socket.id);
         socket.on('join', (data) => {
             socket.join(data.room);
             console.log("data>>>>", data);
@@ -126,74 +127,88 @@ app.post('/user/register', (req, res, next) => {
 });
 
 app.post('/user/auth', (req, res) => {
-    let isPresent = false;
-    let correctPassword = false;
-    let loggedInUser;
-    console.log('inside user/auth');
+    try
+    {
 
-    users.find({}).toArray((err, users) => {
-        if(err){
-        	console.log("err in user auth", err);
-        	res.send(err);
-        }else{
-            users.forEach((user) => {
+        if(!req.body.email){
+           res.status(500).json({success: false, message : "Please provide email"});
+           console.log("Email is not provided");
 
-                if((user.email == req.body.email)) {
-                    if(user.password == req.body.password) {
-                        isPresent = true;
-                        user.isOnline = true;
-                        correctPassword = true;
-                        loggedInUser = {
-                            id: user._id,
-                            username: user.username,
-                            email: user.email,
-                            isOnline : user.isOnline
-
-                        }   
-                    } else {
-                        isPresent = true;
-                    }
-                }
-            }); 
-            io.emit("logged_in_user",loggedInUser);   
-            res.json({ isPresent: isPresent, correctPassword: correctPassword, user: loggedInUser });
         }
-    });
+
+       else if(!req.body.password){    
+           res.status(500).json({success: false, message : "Please provide password"});
+           console.log("Password is not provided");   
+       }
+
+       else{
+
+            users.findOneAndUpdate({"email" : req.body.email, "password" : req.body.password}, {$set : {isOnline : true}}, {returnOriginal: false},(err,loggedInUser) =>
+            {   
+                console.log("found user login$##$##$#", loggedInUser)
+                if(err){
+                console.log("error in find and update", err);   
+                }
+                else{
+                    console.log("loggedInUser", loggedInUser.value);
+                    console.log("loggedInUser", loggedInUser);
+                    if(!loggedInUser.value){
+                    console.log("Both credentials are not true");  
+                    }
+                    else{
+                    isPresent = true;
+                    correctPassword = true;
+                    console.log("user found and authorized>>>>>>", loggedInUser.value) 
+                    io.emit("logged_in_user",loggedInUser.value);   
+                    res.status(200).json({ isPresent: isPresent, correctPassword: correctPassword, user: loggedInUser.value });
+
+
+                    }
+                       
+                }
+
+            })
+
+        }
+    }    
+    catch(e){
+    console.log("exception e>>" , e);
+    res.status(500).json(e)
+    }
+
+
+
 });
+
 
 app.post('/user/logOut', (req, res, next) =>
 { 
   console.log("users.logout api hitting");
-  let email = req.body;
+  let email = req.body.email;
   console.log("email from api@@@", email);
 
-  users.find({email : req.body},(err, user) =>
-    {
-        if(err){
+  users.findOneAndUpdate({"email" : req.body.email}, {$set : {isOnline : false}}, {returnOriginal: false}, (err, foundUser) =>
+  {
+    console.log("foundUser logout>>>>>", foundUser);
+    if(err){
         console.log("err in user logOut", err);
-        }
-        else{
-        console.log("inside else of users.find", user);
-            
-            
-            //     user.isOnline = false;
-            //     logOutUser = {
-            //         id: user._id,
-            //         username: user.username,
-            //         email: user.email,
-            //         isOnline : user.isOnline
+    }
+    else{
+        // if(!foundUser.value){
+        console.log("logout user>>>>>>>", foundUser);
+        // }
 
-            //     }
-            // io.emit("log_Out_User",user);   
-            // res.status(200).json(user);
-        }
-    })
+        io.emit("log_Out_User",foundUser.value);   
+        res.status(200).json(foundUser.value);
+    }
+})
 
 });
 
 app.get('/user/getAllUsers', (req, res, next) => {
     users.find({}, {username: 1, email: 1, _id: 0}).toArray((err, users) => {
         if(err) {
+
             res.send(err);
         }
         else
