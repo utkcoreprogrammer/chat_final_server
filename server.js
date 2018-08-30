@@ -67,6 +67,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
             });
         });
         socket.on('message', (data) => {
+            console.log("message from server@!#@#!#!$!$$$$", data);
             io.in(data.room).emit('new message', {user: data.user, message: data.message});
             chatRooms.updateOne({name: data.room}, { $push: { messages: { user: data.user, message: data.message } } }, (err, res) => {
                 if(err) {
@@ -77,6 +78,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
             });
         });
         socket.on('typing', (data) => {
+            console.log("data from typing server&&&&&&&&&&", data);
             socket.broadcast.in(data.room).emit('typing', {data: data, isTyping: true});
             // addEventListener("keypress")
 
@@ -216,17 +218,3 @@ app.get('/user/getAllUsers', (req, res, next) => {
     });
 });
 
-app.get('/chatroom/:room', (req, res, next) => {
-    let room = req.params.room;
-    console.log("inside chatroom/:room>>>>>>");
-    chatRooms.find({name: room}).toArray((err, chatroom) => {
-        if(err) {
-            console.log(err);
-            return false;
-        }
-        else{
-            console.log("type of chatroom  ", typeof(chatroom));
-            res.json(chatroom.message);
-        }
-    });
-});
