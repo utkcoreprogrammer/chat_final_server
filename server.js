@@ -57,7 +57,8 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
                         console.log("room >>>", room);
                         count++;
                         messageArray = room.messages
-                        socket.emit('getMessages', messageArray);
+                        // console.log("messageArray>>>>>>", messageArray)
+                        // socket.emit('getMessages', messageArray);
                     }
                 });
                 if(count == 0) {
@@ -67,7 +68,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
             });
         });
         socket.on('message', (data) => {
-            console.log("message from server@!#@#!#!$!$$$$", data);
+            // console.log("message from server@!#@#!#!$!$$$$", data);
             io.in(data.room).emit('new message', {user: data.user, message: data.message});
             chatRooms.updateOne({name: data.room}, { $push: { messages: { user: data.user, message: data.message } } }, (err, res) => {
                 if(err) {
@@ -87,8 +88,23 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
 
 }); 
 
-app.get('/', (req, res, next) => {
-    res.send('Welcome to the express server...');
+// app.get('/', (req, res, next) => {
+//     res.send('Welcome to the express server...');
+// });
+
+app.get('/chatroom/:room', (req, res, next) => {
+  
+    console.log("inside chatroom/:room>>>>>>", req.params.room);
+    chatRooms.find({name: req.params.room}, {}).toArray((err, chatroom) => {
+        if(err) {
+            console.log(err);
+            return false;
+        }
+        else{
+        console.log("getting chatroom", chatroom);
+        res.status(200).json(chatroom);
+        }
+    });
 });
 
 app.post('/user/register', (req, res, next) => {
@@ -217,4 +233,8 @@ app.get('/user/getAllUsers', (req, res, next) => {
             res.json(users);
     });
 });
+
+
+
+
 
