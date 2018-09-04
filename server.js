@@ -68,14 +68,17 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
             });
         });
         socket.on('message', (data) => {
-            // console.log("message from server@!#@#!#!$!$$$$", data);
+            console.log("message from server@!#@#!#!$!$$$$", data);
             io.in(data.room).emit('new message', {user: data.user, message: data.message});
             chatRooms.updateOne({name: data.room}, { $push: { messages: { user: data.user, message: data.message } } }, (err, res) => {
                 if(err) {
                     console.log(err);
                     return false;
                 }
-                console.log("Document updated");
+                else{
+                    console.log("Document updated");
+                }
+                
             });
         });
         socket.on('typing', (data) => {
@@ -102,6 +105,7 @@ app.get('/chatroom/:room', (req, res, next) => {
         }
         else{
         console.log("getting chatroom", chatroom);
+        console.log("chatHistory>>>>", chatHistory);
         res.status(200).json(chatroom);
         }
     });
