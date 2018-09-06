@@ -88,8 +88,12 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
                 });
             });
             socket.on('typing', (data) => {
-                console.log("data from typing server&&&&&&&&&&", data);
+                // console.log("data from typing server&&&&&&&&&&", data);
                 socket.broadcast.in(data.room).emit('typing', {data: data, isTyping: true});            
+            });
+            socket.on('groupTyping', (data) => {
+                console.log("data from typing server&&&&&&&&&&", data);
+                socket.broadcast.in(data.room).emit('groupTyping', {user: data.user, isTyping: true});            
             });
         });
     }
@@ -285,8 +289,10 @@ app.get('/user/getAllUsers', (req, res, next) => {
     });
 });
 
-app.get('/user/getAllGroups', (req, res) => {
-    groups.find({}).toArray((err, groups) => {
+app.get('/user/getAllGroups/:username', (req, res) => {
+    console.log("req.params.user_id", req.params.username);
+    let username = req.params.username
+    groups.find({groupMembers : username}).toArray((err, groups) => {
         if(err) {
 
             res.send(err);
