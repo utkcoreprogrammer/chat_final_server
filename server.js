@@ -93,7 +93,7 @@ MongoClient.connect('mongodb://localhost:27017/Chat_App', (err, Database) => {
             });
             socket.on('groupTyping', (data) => {
                 console.log("data from typing server&&&&&&&&&&", data);
-                socket.broadcast.in(data.room).emit('groupTyping', {user: data.user, isTyping: true});            
+                socket.broadcast.in(data.room).emit('groupTyping', {user: [data.user], isTyping: true});            
             });
         });
     }
