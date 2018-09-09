@@ -147,7 +147,9 @@ app.post('/user/register', (req, res, next) => {
                         res.send(err);
                     }
                     else{
-                    res.json(User);
+                        console.log("user>>>>>>>>", user);   
+                        io.emit("New_User_Registered",user);    
+                        res.json(User);
                     }
                 });
             }
